@@ -11,12 +11,15 @@
 extern crate rppal;
 extern crate libc;
 
-use std::ptr::read_volatile;
+use std::{ptr::read_volatile, write};
 use std::ptr::write_volatile;
+use std::fmt;
+use std::error;
 
 use std::thread::sleep;
 use std::time::Duration;
 
+use error::Error;
 use rppal::gpio::Gpio;
 use rppal::gpio::Level;
 use rppal::gpio::Mode;
@@ -44,6 +47,26 @@ pub enum ReadingError {
 
     /// Occurs if there is a problem accessing gpio itself on the Raspberry PI.
     Gpio(rppal::gpio::Error)
+}
+
+impl fmt::Display for ReadingError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ReadingError::Checksum => write!(f, "Checksum did not validate"),
+            ReadingError::Timeout => write!(f, "Timeout occurred"),
+            ReadingError::Gpio(ref err) => write!(f, "Gpio Error: {}", err),
+        }
+    }
+}
+
+impl Error for ReadingError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            ReadingError::Timeout => None,
+            ReadingError::Checksum => None,
+            ReadingError::Gpio(ref err) => Some(err),
+        }
+    }
 }
 
 impl From<rppal::gpio::Error> for ReadingError {
